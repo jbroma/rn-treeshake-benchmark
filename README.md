@@ -1,4 +1,4 @@
-# React Native Bundle Size Benchmark: Metro vs Re.Pack
+# React Native Bundle Size Benchmark
 
 This repository contains a benchmarking tool to compare bundle sizes between Metro (React Native's default bundler) and Re.Pack bundlers in various configurations. The benchmark is performed on [Expensify](https://github.com/Expensify/App), a large open-source React Native application, making it a realistic test case for bundle size comparisons.
 
