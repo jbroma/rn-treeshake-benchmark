@@ -42,7 +42,7 @@ function cleanDir(dir) {
 }
 
 async function createBundles() {
-  console.log('Creating bundles...');
+  console.log('🏗️  Creating bundles...\n');
 
   const bundleTypes = [
     'metro-dev',
@@ -60,7 +60,7 @@ async function createBundles() {
   });
 
   // Metro bundles
-  console.log('\nCreating Metro bundles...');
+  console.log('📦 Creating Metro bundles...');
   exec(
     `npx react-native bundle --platform ios --dev true --entry-file index.js --bundle-output ${path.join(
       ARTIFACTS_DIR,
@@ -79,7 +79,7 @@ async function createBundles() {
   );
 
   // Re.Pack bundles
-  console.log('\nCreating Re.Pack bundles...');
+  console.log('📦 Creating Re.Pack bundles...');
   exec(
     `npx react-native webpack-bundle --platform ios --dev true --entry-file index.js --bundle-output ${path.join(
       ARTIFACTS_DIR,
@@ -98,7 +98,7 @@ async function createBundles() {
   );
 
   // Create HBC bundles from prod bundles
-  console.log('\nCreating HBC bundles...');
+  console.log('📦 Creating HBC bundles...');
 
   // Metro HBC bundle
   exec(
@@ -130,7 +130,7 @@ async function createBundles() {
 }
 
 async function measureBundles() {
-  console.log('\nMeasuring bundle sizes...');
+  console.log('\n📏 Measuring bundle sizes...');
   const bundleTypes = [
     'metro-dev',
     'metro-prod',
@@ -141,24 +141,72 @@ async function measureBundles() {
   ];
 
   const results = {};
+  // First gather all sizes
   for (const type of bundleTypes) {
     const bundlePath = path.join(ARTIFACTS_DIR, type, 'index.bundle');
     const size = measureBundleSize(bundlePath);
+    const sizeInMB = Number((size / (1024 * 1024)).toFixed(2));
+
     results[type] = {
-      size,
-      sizeInMB: (size / (1024 * 1024)).toFixed(2),
+      size: sizeInMB,
+      diff: type.startsWith('metro') ? '0.00%' : null, // Will be filled for repack bundles
+      type: type.startsWith('metro') ? 'Metro' : 'Re.Pack',
+      variant: type.includes('-dev')
+        ? 'Development'
+        : type.includes('-hbc')
+        ? 'Production (HBC)'
+        : 'Production',
     };
   }
 
-  console.log('\nResults:');
-  console.table(results);
+  // Calculate percentage differences using metro as baseline
+  const pairs = [
+    ['metro-dev', 'repack-dev'],
+    ['metro-prod', 'repack-prod'],
+    ['metro-prod-hbc', 'repack-prod-hbc'],
+  ];
+
+  for (const [metro, repack] of pairs) {
+    const metroSize = results[metro].size;
+    const repackSize = results[repack].size;
+    const diffPercent = ((repackSize - metroSize) / metroSize) * 100;
+    const sign = diffPercent > 0 ? '+' : '';
+    results[repack].diff = `${sign}${diffPercent.toFixed(2)}%`;
+  }
+
+  // Print results in a more organized way
+  console.log('\n📊 Bundle Size Comparison:');
+
+  // Custom formatting for console.table
+  const formattedResults = Object.entries(results).map(([key, data]) => ({
+    'Bundle Type': `${data.type} ${data.variant}`,
+    'Size (MB)': data.size.toFixed(2),
+    'Diff vs Metro': data.diff,
+  }));
+
+  console.table(formattedResults);
+
+  // Print summary
+  console.log('\n📝 Summary:');
+  pairs.forEach(([metro, repack]) => {
+    const mSize = results[metro].size;
+    const rSize = results[repack].size;
+    const diff = results[repack].diff;
+    const variant = results[metro].variant;
+    const emoji = diff.startsWith('+') ? '📈' : '📉';
+    console.log(
+      `${emoji} ${variant}: Re.Pack is ${diff} compared to Metro (${rSize.toFixed(
+        2
+      )}MB vs ${mSize.toFixed(2)}MB)`
+    );
+  });
 }
 
 async function main() {
   // Clean and recreate artifacts directory
-  console.log('Cleaning artifacts directory...');
+  console.log('🧹 Cleaning artifacts directory...');
   cleanDir(ARTIFACTS_DIR);
-  console.log('Creating artifacts directory...');
+  console.log('📁 Creating artifacts directory...');
   ensureDir(ARTIFACTS_DIR);
 
   await createBundles();
@@ -166,6 +214,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Benchmark failed:', error);
+  console.error('❌ Benchmark failed:', error);
   process.exit(1);
 });
