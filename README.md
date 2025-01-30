@@ -1,11 +1,26 @@
 # React Native Bundle Size Benchmark: Metro vs Re.Pack
 
-This repository contains a benchmarking tool to compare bundle sizes between Metro (React Native's default bundler) and Re.Pack bundlers in various configurations.
+This repository contains a benchmarking tool to compare bundle sizes between Metro (React Native's default bundler) and Re.Pack bundlers in various configurations. The benchmark is performed on [Expensify](https://github.com/Expensify/App), a large open-source React Native application, making it a realistic test case for bundle size comparisons.
+
+The repository includes a fork of Expensify as a git submodule, which has been modified to support both Metro and Re.Pack bundlers simultaneously. This allows for direct comparison of bundle sizes using the same codebase.
 
 ## Setup
 
 1. Clone the repository
-2. Install dependencies:
+2. Initialize the git submodules:
+
+```bash
+git submodule init
+git submodule update
+```
+
+3. Navigate into the `apps/Expensify` directory
+
+```bash
+cd apps/Expensify
+```
+
+4. Install Expensify dependencies:
 
 ```bash
 npm install
@@ -23,6 +38,8 @@ This will create bundles for different configurations and measure their sizes, p
 
 ## Methodology
 
+This benchmark uses Expensify's codebase as a real-world test subject. Expensify is a complex React Native application with numerous dependencies and features, making it an excellent candidate for understanding the impact of different bundling strategies in production scenarios.
+
 The benchmark creates bundles in various configurations for both Metro and Re.Pack bundlers:
 
 ### Bundle Types
@@ -37,12 +54,17 @@ The benchmark creates bundles in various configurations combining development/pr
 
 > **Note about HBC bundles**: HBC (Hermes Bytecode) bundles are created by compiling JavaScript bundles into Hermes bytecode format using the Hermes compiler (`hermesc`).
 
-### Measurement Process
+## Test Assumptions & Technical Details
 
-1. The tool first cleans the artifacts directory to ensure fresh measurements
-2. Creates bundles for each configuration
-3. Measures the size of each bundle in megabytes (MB)
-4. Calculates the percentage difference between Metro and Re.Pack for each configuration type
+To ensure a fair comparison between Metro and Re.Pack, several adjustments were made to the codebase:
+
+1. **Dynamic Imports Handling**
+
+   All dynamic imports in the repository were marked with `webpackMode: eager` magic comment to match Metro's release mode behavior and prevent code-splitting in Re.Pack (Rspack)
+
+2. **Minification Setup**
+
+   `terser-webpack-plugin` was used instead of the built-in `swcJsMinifier` provided by Rspack. This decision was made due to a bug in SWC at the time of the benchmark that prevented generating runtime-valid bundles
 
 ## Understanding the Results
 
