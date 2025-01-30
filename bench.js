@@ -41,16 +41,56 @@ function cleanDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+// Helper function to get bundle path
+function getBundlePath(type) {
+  return path.join(ARTIFACTS_DIR, type, 'index.bundle');
+}
+
+// Helper function to get assets path
+function getAssetsPath(type) {
+  return path.join(ARTIFACTS_DIR, type, 'assets');
+}
+
+// Helper function to create a bundle using Metro or Re.Pack
+function createBundle(type, isDev, minify = false) {
+  const bundler = type.startsWith('metro') ? 'bundle' : 'webpack-bundle';
+  const configFlag = type.includes('-hbc') ? ' --config metro.config.js' : '';
+  const minifyFlag = ` --minify ${minify}`;
+
+  exec(
+    `npx react-native ${bundler} --platform ios --dev ${isDev} --entry-file index.js ` +
+      `--bundle-output ${getBundlePath(type)} ` +
+      `--assets-dest ${getAssetsPath(type)}${configFlag}${minifyFlag}`,
+    EXPENSIFY_DIR
+  );
+}
+
+// Helper function to create HBC bundle
+function createHBCBundle(sourceType, targetType) {
+  exec(
+    `./node_modules/react-native/sdks/hermesc/osx-bin/hermesc ${getBundlePath(
+      sourceType
+    )} ` + `-emit-binary -out ${getBundlePath(targetType)} -O -w`,
+    EXPENSIFY_DIR
+  );
+}
+
 async function createBundles() {
   console.log('🏗️  Creating bundles...\n');
 
   const bundleTypes = [
+    // Metro bundles
     'metro-dev',
     'metro-prod',
+    'metro-prod-min',
     'metro-prod-hbc',
+    'metro-prod-min-hbc',
+    // Re.Pack bundles
     'repack-dev',
     'repack-prod',
+    'repack-prod-min',
     'repack-prod-hbc',
+    'repack-prod-min-hbc',
   ];
 
   // Create directories for all bundle types
@@ -59,85 +99,54 @@ async function createBundles() {
     ensureDir(path.join(ARTIFACTS_DIR, type, 'assets'));
   });
 
-  // Metro bundles
-  console.log('📦 Creating Metro bundles...');
-  exec(
-    `npx react-native bundle --platform ios --dev true --entry-file index.js --bundle-output ${path.join(
-      ARTIFACTS_DIR,
-      'metro-dev',
-      'index.bundle'
-    )} --assets-dest ${path.join(ARTIFACTS_DIR, 'metro-dev', 'assets')}`,
-    EXPENSIFY_DIR
-  );
-  exec(
-    `npx react-native bundle --platform ios --dev false --entry-file index.js --bundle-output ${path.join(
-      ARTIFACTS_DIR,
-      'metro-prod',
-      'index.bundle'
-    )} --assets-dest ${path.join(ARTIFACTS_DIR, 'metro-prod', 'assets')}`,
-    EXPENSIFY_DIR
-  );
+  // Create Metro bundles
+  console.log('📦 Creating Metro Development bundle...');
+  createBundle('metro-dev', true, false);
 
-  // Re.Pack bundles
-  console.log('📦 Creating Re.Pack bundles...');
-  exec(
-    `npx react-native webpack-bundle --platform ios --dev true --entry-file index.js --bundle-output ${path.join(
-      ARTIFACTS_DIR,
-      'repack-dev',
-      'index.bundle'
-    )} --assets-dest ${path.join(ARTIFACTS_DIR, 'repack-dev', 'assets')}`,
-    EXPENSIFY_DIR
-  );
-  exec(
-    `npx react-native webpack-bundle --platform ios --dev false --entry-file index.js --bundle-output ${path.join(
-      ARTIFACTS_DIR,
-      'repack-prod',
-      'index.bundle'
-    )} --assets-dest ${path.join(ARTIFACTS_DIR, 'repack-prod', 'assets')}`,
-    EXPENSIFY_DIR
-  );
+  console.log('📦 Creating Metro Production bundle...');
+  createBundle('metro-prod', false, false);
 
-  // Create HBC bundles from prod bundles
-  console.log('📦 Creating HBC bundles...');
+  console.log('📦 Creating Metro Production Minified bundle...');
+  createBundle('metro-prod-min', false, true);
 
-  // Metro HBC bundle
-  exec(
-    `./node_modules/react-native/sdks/hermesc/osx-bin/hermesc ${path.join(
-      ARTIFACTS_DIR,
-      'metro-prod',
-      'index.bundle'
-    )} -emit-binary -out ${path.join(
-      ARTIFACTS_DIR,
-      'metro-prod-hbc',
-      'index.bundle'
-    )} -O -w`,
-    EXPENSIFY_DIR
-  );
+  console.log('📦 Creating Metro Production HBC bundle...');
+  createHBCBundle('metro-prod', 'metro-prod-hbc');
 
-  // Re.Pack HBC bundle
-  exec(
-    `./node_modules/react-native/sdks/hermesc/osx-bin/hermesc ${path.join(
-      ARTIFACTS_DIR,
-      'repack-prod',
-      'index.bundle'
-    )} -emit-binary -out ${path.join(
-      ARTIFACTS_DIR,
-      'repack-prod-hbc',
-      'index.bundle'
-    )} -O -w`,
-    EXPENSIFY_DIR
-  );
+  console.log('📦 Creating Metro Production Minified HBC bundle...');
+  createHBCBundle('metro-prod-min', 'metro-prod-min-hbc');
+
+  // Create Re.Pack bundles
+  console.log('📦 Creating Re.Pack Development bundle...');
+  createBundle('repack-dev', true, false);
+
+  console.log('📦 Creating Re.Pack Production bundle...');
+  createBundle('repack-prod', false, false);
+
+  console.log('📦 Creating Re.Pack Production Minified bundle...');
+  createBundle('repack-prod-min', false, true);
+
+  console.log('📦 Creating Re.Pack Production HBC bundle...');
+  createHBCBundle('repack-prod', 'repack-prod-hbc');
+
+  console.log('📦 Creating Re.Pack Production Minified HBC bundle...');
+  createHBCBundle('repack-prod-min', 'repack-prod-min-hbc');
 }
 
 async function measureBundles() {
   console.log('\n📏 Measuring bundle sizes...');
   const bundleTypes = [
+    // Metro bundles
     'metro-dev',
     'metro-prod',
+    'metro-prod-min',
     'metro-prod-hbc',
+    'metro-prod-min-hbc',
+    // Re.Pack bundles
     'repack-dev',
     'repack-prod',
+    'repack-prod-min',
     'repack-prod-hbc',
+    'repack-prod-min-hbc',
   ];
 
   const results = {};
@@ -149,10 +158,14 @@ async function measureBundles() {
 
     results[type] = {
       size: sizeInMB,
-      diff: type.startsWith('metro') ? '0.00%' : null, // Will be filled for repack bundles
+      diff: type.startsWith('metro') ? '0.00%' : null,
       type: type.startsWith('metro') ? 'Metro' : 'Re.Pack',
       variant: type.includes('-dev')
         ? 'Development'
+        : type.includes('-min-hbc')
+        ? 'Production Minified (HBC)'
+        : type.includes('-min')
+        ? 'Production Minified'
         : type.includes('-hbc')
         ? 'Production (HBC)'
         : 'Production',
@@ -163,7 +176,9 @@ async function measureBundles() {
   const pairs = [
     ['metro-dev', 'repack-dev'],
     ['metro-prod', 'repack-prod'],
+    ['metro-prod-min', 'repack-prod-min'],
     ['metro-prod-hbc', 'repack-prod-hbc'],
+    ['metro-prod-min-hbc', 'repack-prod-min-hbc'],
   ];
 
   for (const [metro, repack] of pairs) {
