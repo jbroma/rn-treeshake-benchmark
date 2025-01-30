@@ -4,6 +4,10 @@ This repository contains a benchmarking tool to compare bundle sizes between Met
 
 The repository includes a fork of Expensify as a git submodule, which has been modified to support both Metro and Re.Pack bundlers simultaneously. This allows for direct comparison of bundle sizes using the same codebase.
 
+## Results (as of 30.01.2025)
+
+![Results of the benchmark](./img/results.png)
+
 ## Setup
 
 1. Clone the repository
