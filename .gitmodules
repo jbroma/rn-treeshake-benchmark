@@ -1,4 +1,4 @@
 [submodule "apps/Expensify"]
 	path = apps/Expensify
 	url = https://github.com/jbroma/ExpensifyApp.git
-	branch = with-repack
+	branch = with-repack-expo-treeshake
